@@ -3,7 +3,7 @@
 #
 # Usage
 #
-# define <name> Rainbird <IP> <PASSWORD>
+# define <name> Rainbird <IP> <PASSWORD> [<INTERVAL>]
 #
 #####################################################################################
 
@@ -34,15 +34,18 @@ sub Rainbird_Define($$)
 {
   my ($hash,$def) = @_;
   my @args = split " ",$def;
-  my ($name,$type,$ip,$pw) = @args;
-  if (@args < 4 || @args > 4)
+  my ($name,$type,$ip,$pw,$int) = @args;
+  if (@args < 4 || @args > 5)
   {
-    return "Usage: define <name> Rainbird <IP> <PASSWORD>";
+    return "Usage: define <name> Rainbird <IP> <PASSWORD> [<INTERVAL>]";
   }
+  $int = $int && $int>59?$int:60;
+  $hash->{INTERVAL} = $int;
   RemoveInternalTimer($hash);
   $hash->{NOTIFYDEV} = "global";
   if ($init_done && !defined $hash->{OLDDEF})
   {
+    addToDevAttrList($name,"homebridgeMapping:textField-long") if (!grep /^homebridgeMapping/,split(" ",$attr{"global"}{userattr}));
     $attr{$name}{alias}         = "Rainbird Irrigation";
     $attr{$name}{icon}          = "sani_irrigation";
     $attr{$name}{room}          = "Irrigation";
@@ -74,7 +77,7 @@ sub Rainbird_Undef($$)
   <a name="Rainbird_define"></a>
   <p><b>Define</b></p>
   <ul>
-    <code>define &lt;name&gt; Rainbird &lt;IP-ADDRESS&gt; &lt;PASSWORD&gt;</code><br>
+    <code>define &lt;name&gt; Rainbird &lt;IP-ADDRESS&gt; &lt;PASSWORD&gt; [&lt;INTERVAL&gt;]</code><br>
   </ul>
   <br>
   Example for running Rainbird:
@@ -135,7 +138,7 @@ sub Rainbird_Undef($$)
   <a name="Rainbird_define"></a>
   <p><b>Define</b></p>
   <ul>
-    <code>define &lt;name&gt; Rainbird &lt;IP-ADRESSE&gt; &lt;PASSWORT&gt;</code><br>
+    <code>define &lt;name&gt; Rainbird &lt;IP-ADRESSE&gt; &lt;PASSWORT&gt; [&lt;INTERVAL&gt;]</code><br>
   </ul>
   <br>
   Beispiel f&uuml;r:

@@ -1,2 +1,2 @@
 # fhem-Rainbird
-a FHEM module for Rain Bird LNK irrigation systems
+a FHEM module for Rain Bird LNK equipped irrigation systems

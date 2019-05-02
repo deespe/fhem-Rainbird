@@ -26,6 +26,7 @@ sub Rainbird_Initialize($)
   #$hash->{SetFn}        = "Rainbird_Set";
   $hash->{UndefFn}      = "Rainbird_Undef";
   $hash->{AttrList}     = "disable ".
+                          "rb_interval ".
                           "rb_test ".
                           "$readingFnAttributes";
 }
@@ -34,21 +35,26 @@ sub Rainbird_Define($$)
 {
   my ($hash,$def) = @_;
   my @args = split " ",$def;
-  my ($name,$type,$ip,$pw,$int) = @args;
+  my ($name,$type,$host,$sec,$int) = @args;
+  my $port = 80;
   if (@args < 4 || @args > 5)
   {
     return "Usage: define <name> Rainbird <IP> <PASSWORD> [<INTERVAL>]";
   }
   $int = $int && $int>59?$int:60;
-  $hash->{INTERVAL} = $int;
-  RemoveInternalTimer($hash);
+  $hash->{DEF}    = $host;
+  $hash->{IP}     = $host;
+  $hash->{PORT}   = $port;
   $hash->{NOTIFYDEV} = "global";
+  $hash->{DeviceName} = "$host:$port";
+  RemoveInternalTimer($hash);
   if ($init_done && !defined $hash->{OLDDEF})
   {
     addToDevAttrList($name,"homebridgeMapping:textField-long") if (!grep /^homebridgeMapping/,split(" ",$attr{"global"}{userattr}));
     $attr{$name}{alias}         = "Rainbird Irrigation";
     $attr{$name}{icon}          = "sani_irrigation";
     $attr{$name}{room}          = "Irrigation";
+    $attr{$name}{rb_interval}   = $int;
     readingsSingleUpdate($hash,"state","initialized",0);
   }
   return;

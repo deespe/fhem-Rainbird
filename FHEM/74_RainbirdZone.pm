@@ -1,9 +1,9 @@
 #####################################################################################
-# $Id: 74_Rainbird.pm 18798 2019-03-05 19:13:28Z DeeSPe $
+# $Id: 74_RainbirdZone.pm 18798 2019-03-05 19:13:28Z DeeSPe $
 #
 # Usage
 #
-# define <name> Rainbird <IP> <PASSWORD> [<INTERVAL>]
+# define <name> RainbirdZone <ZONE-NAME>
 #
 #####################################################################################
 
@@ -12,67 +12,52 @@ package main;
 use strict;
 use warnings;
 use POSIX;
-use Time::HiRes qw(gettimeofday);
-#use HttpUtils;
-use DevIo;
 use JSON;
-use Blocking;
+use SetExtensions;
 use vars qw{%attr %defs %modules $FW_CSRF};
 
-sub Rainbird_Initialize($)
+sub RainbirdZone_Initialize($)
 {
   my ($hash) = @_;
-  #$hash->{AttrFn}       = "Rainbird_Attr";
-  $hash->{DefFn}        = "Rainbird_Define";
-  #$hash->{NotifyFn}     = "Rainbird_Notify";
-  #$hash->{GetFn}        = "Rainbird_Get";
-  $hash->{SetFn}        = "Rainbird_Set";
-  $hash->{UndefFn}      = "Rainbird_Undef";
-  $hash->{AttrList}     = "disable ".
-                          "rb_interval ".
-                          "rb_test ".
-                          "$readingFnAttributes";
+  #$hash->{AttrFn}       = "RainbirdZone_Attr";
+  $hash->{DefFn}        = "RainbirdZone_Define";
+  #$hash->{NotifyFn}     = "RainbirdZone_Notify";
+  #$hash->{GetFn}        = "RainbirdZone_Get";
+  $hash->{SetFn}        = "RainbirdZone_Set";
+  $hash->{UndefFn}      = "RainbirdZone_Undef";
+  $hash->{AttrList}     = "$readingFnAttributes";
 }
 
-sub Rainbird_Define($$)
+sub RainbirdZone_Define($$)
 {
   my ($hash,$def) = @_;
   my @args = split " ",$def;
-  my ($name,$type,$host,$sec,$int) = @args;
-  my $port = 80;
-  if ($init_done && (@args < 4 || @args > 5))
+  my ($name,$type,$zone) = @args;
+  if ($init_done && (@args < 3 || @args > 3))
   {
-    return "Usage: define <name> Rainbird <IP> <PASSWORD> [<INTERVAL>]";
+    return "Usage: define <name> RainbirdZone <ZONE-NAME>";
   }
-  $int = $int && $int>59?$int:60;
-  $hash->{DEF}    = $host;
-  $hash->{IP}     = $host;
-  $hash->{PORT}   = $port;
   $hash->{NOTIFYDEV} = "global";
-  $hash->{DeviceName} = "$host:$port";
   RemoveInternalTimer($hash);
   if ($init_done && !defined $hash->{OLDDEF})
   {
     addToDevAttrList($name,"homebridgeMapping:textField-long") if (!grep /^homebridgeMapping/,split(" ",$attr{"global"}{userattr}));
-    $attr{$name}{alias}         = "Rainbird Irrigation";
+    $attr{$name}{alias}         = $zone;
     $attr{$name}{icon}          = "sani_irrigation";
     $attr{$name}{room}          = "Irrigation";
-    $attr{$name}{rb_interval}   = $int;
     readingsSingleUpdate($hash,"state","initialized",0);
   }
   return;
 }
 
-sub Rainbird_Undef($$)
+sub RainbirdZone_Undef($$)
 {
   my ($hash,$arg) = @_;
   RemoveInternalTimer($hash);
-  BlockingKill($hash->{helper}{RUNNING_PID}) if ($hash->{helper}{RUNNING_PID});
-  DevIo_CloseDev($hash);
   return;
 }
 
-sub Rainbird_Set($@)
+sub RainbirdZone_Set($@)
 {
   my ($hash,$name,@aa) = @_;
   my ($cmd,@args) = @aa;
@@ -106,30 +91,38 @@ sub Rainbird_Set($@)
 <ul>
   With <i>Rainbird</i> you are able to control Rain Bird LNK equipped devices.<br>
   <br>
-  <a name="Rainbird_define"></a>
+  <a name="RainbirdZone_define"></a>
   <p><b>Define</b></p>
   <ul>
-    <code>define &lt;name&gt; Rainbird &lt;IP-ADDRESS&gt; &lt;PASSWORD&gt; [&lt;INTERVAL&gt;]</code><br>
+    <code>define &lt;name&gt; Rainbird &lt;ZONE-NAME&gt;</code><br>
   </ul>
   <br>
-  Example for running Rainbird:
+  Example for Rain Bird Zone:
   <br><br>
   <ul>
-    <code>define rb Rainbird 192.168.2.137 mYs€cR3t</code><br>
+    <code>define Lawn_left RainbirdZone Lawn_left</code><br>
   </ul>
   <br><br>
   If you have homebridgeMapping in your attributes an appropriate mapping will be added, genericDeviceType as well.
   <br>
-  <a name="Rainbird_set"></a>
+  <a name="RainbirdZone_set"></a>
   <p><b>Set</b></p>
   <ul>
     <li>
       <i>on</i><br>
       start irrigation
     </li>
+    <li>
+      <i>off</i><br>
+      stop irrigation
+    </li>
+    <li>
+      <i>toggle</i><br>
+      toggle irrigation
+    </li>
   </ul>  
   <br>
-  <a name="Rainbird_get"></a>
+  <a name="RainbirdZone_get"></a>
   <p><b>Get</b></p>
   <ul>
     <li>
@@ -138,7 +131,7 @@ sub Rainbird_Set($@)
     </li>
   </ul>
   <br>
-  <a name="Rainbird_attr"></a>
+  <a name="RainbirdZone_attr"></a>
   <p><b>Attributes</b></p>
   <ul>
     <li>
@@ -148,7 +141,7 @@ sub Rainbird_Set($@)
     </li>
   </ul>
   <br>
-  <a name="Rainbird_read"></a>
+  <a name="RainbirdZone_read"></a>
   <p><b>Readings</b></p>
   <p>All readings updates will create events.</p>
   <ul>
@@ -165,32 +158,40 @@ sub Rainbird_Set($@)
 <a name="Rainbird"></a>
 <h3>Rainbird</h3>
 <ul>
-  Mit <i>Rainbird</i> k&ouml;nnen Rain Bird LNK ausgestatteten Ger&auml;te gesteuert werden.<br>
+  Mit <i>RainbirdZone</i> k&ouml;nnen Rain Bird Zonen gesteuert werden.<br>
   <br>
-  <a name="Rainbird_define"></a>
+  <a name="RainbirdZone_define"></a>
   <p><b>Define</b></p>
   <ul>
-    <code>define &lt;name&gt; Rainbird &lt;IP-ADRESSE&gt; &lt;PASSWORT&gt; [&lt;INTERVAL&gt;]</code><br>
+    <code>define &lt;name&gt; Rainbird &lt;ZONE-NAME&gt;</code><br>
   </ul>
   <br>
   Beispiel f&uuml;r:
   <br><br>
   <ul>
-    <code>define rb Rainbird 192.168.2.137 mYs€cR3t</code><br>
+    <code>define Lawn_left Rainbird Lawn_left</code><br>
   </ul>
   <br><br>
   Wenn homebridgeMapping in der Attributliste ist, so wird ein entsprechendes Mapping hinzugef&uuml;gt, ebenso genericDeviceType.
   <br>
-  <a name="Rainbird_set"></a>
+  <a name="RainbirdZone_set"></a>
   <p><b>Set</b></p>
   <ul>
     <li>
       <i>on</i><br>
       Beregnung starten
     </li>
+    <li>
+      <i>off</i><br>
+      Beregnung stoppen
+    </li>
+    <li>
+      <i>toggle</i><br>
+      Beregnung togglen
+    </li>
   </ul>  
   <br>
-  <a name="Rainbird_get"></a>
+  <a name="RainbirdZone_get"></a>
   <p><b>Get</b></p>
   <ul>
     <li>
@@ -199,7 +200,7 @@ sub Rainbird_Set($@)
     </li>
   </ul>
   <br>
-  <a name="Rainbird_attr"></a>
+  <a name="RainbirdZone_attr"></a>
   <p><b>Attribute</b></p>
   <ul>
     <li>
@@ -209,7 +210,7 @@ sub Rainbird_Set($@)
     </li>
   </ul>
   <br>
-  <a name="Rainbird_read"></a>
+  <a name="RainbirdZone_read"></a>
   <p><b>Readings</b></p>
   <p>Alle Aktualisierungen der Readings erzeugen Events.</p>
   <ul>

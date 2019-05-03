@@ -1,9 +1,9 @@
 #####################################################################################
-# $Id: 74_Rainbird.pm 18798 2019-03-05 19:13:28Z DeeSPe $
+# $Id: 74_RainbirdLNK.pm 18798 2019-03-05 19:13:28Z DeeSPe $
 #
 # Usage
 #
-# define <name> Rainbird <IP> <PASSWORD> [<INTERVAL>]
+# define <name> RainbirdLNK <IP> <PASSWORD> [<INTERVAL>]
 #
 #####################################################################################
 
@@ -19,51 +19,51 @@ use JSON;
 use Blocking;
 use vars qw{%attr %defs %modules $FW_CSRF};
 
-sub Rainbird_Initialize($)
+my $version = "0.1.0";
+
+sub RainbirdLNK_Initialize($)
 {
   my ($hash) = @_;
-  #$hash->{AttrFn}       = "Rainbird_Attr";
-  $hash->{DefFn}        = "Rainbird_Define";
-  #$hash->{NotifyFn}     = "Rainbird_Notify";
-  #$hash->{GetFn}        = "Rainbird_Get";
-  $hash->{SetFn}        = "Rainbird_Set";
-  $hash->{UndefFn}      = "Rainbird_Undef";
-  $hash->{AttrList}     = "disable ".
-                          "rb_interval ".
-                          "rb_test ".
-                          "$readingFnAttributes";
+  #$hash->{AttrFn}       = "RainbirdLNK_Attr";
+  $hash->{DefFn}        = "RainbirdLNK_Define";
+  #$hash->{NotifyFn}     = "RainbirdLNK_Notify";
+  $hash->{GetFn}        = "RainbirdLNK_Get";
+  $hash->{SetFn}        = "RainbirdLNK_Set";
+  $hash->{UndefFn}      = "RainbirdLNK_Undef";
+  $hash->{AttrList}     = "disable:1,0 ".
+                          "disabledForIntervals ".
+                          "interval ".
+                          $readingFnAttributes;
 }
 
-sub Rainbird_Define($$)
+sub RainbirdLNK_Define($$)
 {
   my ($hash,$def) = @_;
   my @args = split " ",$def;
   my ($name,$type,$host,$sec,$int) = @args;
   my $port = 80;
-  if ($init_done && (@args < 4 || @args > 5))
-  {
-    return "Usage: define <name> Rainbird <IP> <PASSWORD> [<INTERVAL>]";
-  }
-  $int = $int && $int>59?$int:60;
-  $hash->{DEF}    = $host;
-  $hash->{IP}     = $host;
-  $hash->{PORT}   = $port;
-  $hash->{NOTIFYDEV} = "global";
+  return "Usage: define <name> RainbirdLNK <IP> <PASSWORD> [<INTERVAL>]" if ($init_done && (@args < 4 || @args > 5));
+  return "\"$host\" is not a valid IPv4 address" if ($host !~ /^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$/);
+  $int = $int && $int >= 60 ? $int : 60;
+  $hash->{DEF}        = $host;
+  $hash->{IP}         = $host;
+  $hash->{PORT}       = $port;
+  $hash->{VERSION}    = $version;
+  $hash->{NOTIFYDEV}  = "global";
   $hash->{DeviceName} = "$host:$port";
   RemoveInternalTimer($hash);
   if ($init_done && !defined $hash->{OLDDEF})
   {
-    addToDevAttrList($name,"homebridgeMapping:textField-long") if (!grep /^homebridgeMapping/,split(" ",$attr{"global"}{userattr}));
-    $attr{$name}{alias}         = "Rainbird Irrigation";
-    $attr{$name}{icon}          = "sani_irrigation";
-    $attr{$name}{room}          = "Irrigation";
-    $attr{$name}{rb_interval}   = $int;
+    $attr{$name}{alias}     = "Rain Bird LNK Wifi";
+    $attr{$name}{icon}      = "it_wifi";
+    $attr{$name}{room}      = "Rainbird";
+    $attr{$name}{interval}  = $int;
     readingsSingleUpdate($hash,"state","initialized",0);
   }
   return;
 }
 
-sub Rainbird_Undef($$)
+sub RainbirdLNK_Undef($$)
 {
   my ($hash,$arg) = @_;
   RemoveInternalTimer($hash);
@@ -72,22 +72,35 @@ sub Rainbird_Undef($$)
   return;
 }
 
-sub Rainbird_Set($@)
+sub RainbirdLNK_Set($@)
 {
   my ($hash,$name,@aa) = @_;
   my ($cmd,@args) = @aa;
   return if (IsDisabled($name) && $cmd ne "?");
-  return "\"set $name\" needs at least one argument and maximum three arguments" if (@aa > 3);
-  my $para = "Rasen_links:on,off";
-  if ($cmd eq "on")
+  return "\"set $name $cmd\" needs two arguments at maximum" if (@aa > 2);
+  my $para = "password";
+  if ($cmd eq "password")
   {
-    return undef;
-  }
-  elsif ($cmd eq "off")
-  {
-    return undef;
+    return "password change not implemented yet...";
   }
   return $para;
+}
+
+sub RainbirdLNK_Get($@)
+{
+  my ($hash,$name,@aa) = @_;
+  my ($cmd,@args) = @aa;
+  return if (IsDisabled($name) && $cmd ne "?");
+  my $para =  "update:noArg";
+  return "get $name needs one parameter: $para" if (!$cmd);
+  if ($cmd eq "update")
+  {
+    return undef;
+  }
+  else
+  {
+    return "Unknown argument $cmd for $name, choose one of $para";
+  }
 }
 
 1;
@@ -103,30 +116,30 @@ sub Rainbird_Set($@)
 <ul>
   With <i>Rainbird</i> you are able to control Rain Bird LNK equipped devices.<br>
   <br>
-  <a name="Rainbird_define"></a>
+  <a name="RainbirdLNK_define"></a>
   <p><b>Define</b></p>
   <ul>
-    <code>define &lt;name&gt; Rainbird &lt;IP-ADDRESS&gt; &lt;PASSWORD&gt; [&lt;INTERVAL&gt;]</code><br>
+    <code>define &lt;name&gt; RainbirdLNK &lt;IP-ADDRESS&gt; &lt;PASSWORD&gt; [&lt;INTERVAL&gt;]</code><br>
   </ul>
   <br>
   Example for running Rainbird:
   <br><br>
   <ul>
-    <code>define rb Rainbird 192.168.2.137 mYs€cR3t</code><br>
+    <code>define rb RainbirdLNK 192.168.2.137 mYs€cR3t</code><br>
   </ul>
   <br><br>
   If you have homebridgeMapping in your attributes an appropriate mapping will be added, genericDeviceType as well.
   <br>
-  <a name="Rainbird_set"></a>
+  <a name="RainbirdLNK_set"></a>
   <p><b>Set</b></p>
   <ul>
     <li>
-      <i>on</i><br>
-      start irrigation
+      <i>password</i><br>
+      set device password
     </li>
   </ul>  
   <br>
-  <a name="Rainbird_get"></a>
+  <a name="RainbirdLNK_get"></a>
   <p><b>Get</b></p>
   <ul>
     <li>
@@ -135,7 +148,7 @@ sub Rainbird_Set($@)
     </li>
   </ul>
   <br>
-  <a name="Rainbird_attr"></a>
+  <a name="RainbirdLNK_attr"></a>
   <p><b>Attributes</b></p>
   <ul>
     <li>
@@ -145,7 +158,7 @@ sub Rainbird_Set($@)
     </li>
   </ul>
   <br>
-  <a name="Rainbird_read"></a>
+  <a name="RainbirdLNK_read"></a>
   <p><b>Readings</b></p>
   <p>All readings updates will create events.</p>
   <ul>
@@ -164,30 +177,30 @@ sub Rainbird_Set($@)
 <ul>
   Mit <i>Rainbird</i> k&ouml;nnen Rain Bird LNK ausgestatteten Ger&auml;te gesteuert werden.<br>
   <br>
-  <a name="Rainbird_define"></a>
+  <a name="RainbirdLNK_define"></a>
   <p><b>Define</b></p>
   <ul>
-    <code>define &lt;name&gt; Rainbird &lt;IP-ADRESSE&gt; &lt;PASSWORT&gt; [&lt;INTERVAL&gt;]</code><br>
+    <code>define &lt;name&gt; RainbirdLNK &lt;IP-ADRESSE&gt; &lt;PASSWORT&gt; [&lt;INTERVAL&gt;]</code><br>
   </ul>
   <br>
   Beispiel f&uuml;r:
   <br><br>
   <ul>
-    <code>define rb Rainbird 192.168.2.137 mYs€cR3t</code><br>
+    <code>define rb RainbirdLNK 192.168.2.137 mYs€cR3t</code><br>
   </ul>
   <br><br>
   Wenn homebridgeMapping in der Attributliste ist, so wird ein entsprechendes Mapping hinzugef&uuml;gt, ebenso genericDeviceType.
   <br>
-  <a name="Rainbird_set"></a>
+  <a name="RainbirdLNK_set"></a>
   <p><b>Set</b></p>
   <ul>
     <li>
-      <i>on</i><br>
-      Beregnung starten
+      <i>password</i><br>
+      Passwort des Ger&auml;tes setzen
     </li>
   </ul>  
   <br>
-  <a name="Rainbird_get"></a>
+  <a name="RainbirdLNK_get"></a>
   <p><b>Get</b></p>
   <ul>
     <li>
@@ -196,7 +209,7 @@ sub Rainbird_Set($@)
     </li>
   </ul>
   <br>
-  <a name="Rainbird_attr"></a>
+  <a name="RainbirdLNK_attr"></a>
   <p><b>Attribute</b></p>
   <ul>
     <li>
@@ -206,7 +219,7 @@ sub Rainbird_Set($@)
     </li>
   </ul>
   <br>
-  <a name="Rainbird_read"></a>
+  <a name="RainbirdLNK_read"></a>
   <p><b>Readings</b></p>
   <p>Alle Aktualisierungen der Readings erzeugen Events.</p>
   <ul>

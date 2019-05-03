@@ -81,7 +81,7 @@ sub RainbirdLNK_Set($@)
   my $para = "password";
   if ($cmd eq "password")
   {
-    return "password change not implemented yet...";
+    return "$cmd not implemented yet...";
   }
   return $para;
 }
@@ -95,7 +95,7 @@ sub RainbirdLNK_Get($@)
   return "get $name needs one parameter: $para" if (!$cmd);
   if ($cmd eq "update")
   {
-    return undef;
+    return "$cmd not implemented yet...";
   }
   else
   {

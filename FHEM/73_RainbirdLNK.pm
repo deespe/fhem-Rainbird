@@ -12,10 +12,10 @@ package main;
 use strict;
 use warnings;
 use POSIX;
-use Time::HiRes qw(gettimeofday);
-#use HttpUtils;
-use DevIo;
 use JSON;
+use Digest::SHA qw(sha256);
+use Time::HiRes qw(gettimeofday);
+use DevIo;
 use Blocking;
 use vars qw{%attr %defs %modules $FW_CSRF};
 
@@ -60,7 +60,7 @@ sub RainbirdLNK_Define($$)
     $attr{$name}{interval}  = $int;
     readingsSingleUpdate($hash,"state","initialized",0);
   }
-  return;
+  return RainbirdLNK_OpenDev($hash);
 }
 
 sub RainbirdLNK_Undef($$)
@@ -101,6 +101,54 @@ sub RainbirdLNK_Get($@)
   {
     return "Unknown argument $cmd for $name, choose one of $para";
   }
+}
+
+sub RainbirdLNK_OpenDev($)
+{
+  my ($hash) = @_;
+  DevIo_CloseDev($hash);
+  DevIo_OpenDev($hash,1,DevIo_SimpleWrite($hash,"",2,1),sub($$$)
+  {
+    my ($h,$err) = @_;
+    InternalTimer(gettimeofday() + 5,"RainbirdLNK_GetUpdate",$hash);
+    if ($err)
+    {
+      readingsBeginUpdate($hash);
+      readingsBulkUpdate($hash,"lastError",$err);
+      readingsBulkUpdate($hash,"serverResponse","ERROR");
+      readingsBulkUpdate($hash,"state","ERROR");
+      readingsEndUpdate($hash,1);
+      return "ERROR: $err";
+    }
+    else
+    {
+      return $hash->{DeviceName}." connected";
+    }
+  });
+}
+
+sub RainbirdLNK_GetUpdate($)
+{
+  my ($hash) = @_;
+  return undef;
+}
+
+
+sub RainbirdLNK_decrypt($)
+{
+  my ($data) = @_;
+  my $decdata = undef;
+  return $decdata;
+}
+
+# 381f57478207b32031e5fc776da9215848375d00c52ac5b215257c1b522f9c5b
+
+sub RainbirdLNK_encrypt($)
+{
+  my ($data) = @_;
+  my $encdata = unpack("H*",sha256($data));
+  # my $encdata = sha256($data);
+  return $encdata;
 }
 
 1;

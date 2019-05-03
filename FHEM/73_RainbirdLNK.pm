@@ -13,7 +13,10 @@ use strict;
 use warnings;
 use POSIX;
 use Time::HiRes qw(gettimeofday);
-use HttpUtils;
+#use HttpUtils;
+use DevIo;
+use JSON;
+use Blocking;
 use vars qw{%attr %defs %modules $FW_CSRF};
 
 sub Rainbird_Initialize($)
@@ -23,7 +26,7 @@ sub Rainbird_Initialize($)
   $hash->{DefFn}        = "Rainbird_Define";
   #$hash->{NotifyFn}     = "Rainbird_Notify";
   #$hash->{GetFn}        = "Rainbird_Get";
-  #$hash->{SetFn}        = "Rainbird_Set";
+  $hash->{SetFn}        = "Rainbird_Set";
   $hash->{UndefFn}      = "Rainbird_Undef";
   $hash->{AttrList}     = "disable ".
                           "rb_interval ".
@@ -37,7 +40,7 @@ sub Rainbird_Define($$)
   my @args = split " ",$def;
   my ($name,$type,$host,$sec,$int) = @args;
   my $port = 80;
-  if (@args < 4 || @args > 5)
+  if ($init_done && (@args < 4 || @args > 5))
   {
     return "Usage: define <name> Rainbird <IP> <PASSWORD> [<INTERVAL>]";
   }
@@ -64,7 +67,27 @@ sub Rainbird_Undef($$)
 {
   my ($hash,$arg) = @_;
   RemoveInternalTimer($hash);
+  BlockingKill($hash->{helper}{RUNNING_PID}) if ($hash->{helper}{RUNNING_PID});
+  DevIo_CloseDev($hash);
   return;
+}
+
+sub Rainbird_Set($@)
+{
+  my ($hash,$name,@aa) = @_;
+  my ($cmd,@args) = @aa;
+  return if (IsDisabled($name) && $cmd ne "?");
+  return "\"set $name\" needs at least one argument and maximum three arguments" if (@aa > 3);
+  my $para = "Rasen_links:on,off";
+  if ($cmd eq "on")
+  {
+    return undef;
+  }
+  elsif ($cmd eq "off")
+  {
+    return undef;
+  }
+  return $para;
 }
 
 1;

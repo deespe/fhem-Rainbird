@@ -1,5 +1,5 @@
 #####################################################################################
-# $Id: 74_RainbirdLNK.pm 18798 2019-03-05 19:13:28Z DeeSPe $
+# $Id: 73_RainbirdLNK.pm 18798 2019-03-05 19:13:28Z DeeSPe $
 #
 # Usage
 #
@@ -11,15 +11,19 @@ package main;
 
 use strict;
 use warnings;
+use Time::HiRes qw(gettimeofday);
+use Encode qw/encode/;
+use Crypt::Rijndael;
+use Digest::SHA qw(sha256);
 use POSIX;
 use JSON;
-use Digest::SHA qw(sha256);
-use Time::HiRes qw(gettimeofday);
 use DevIo;
 use Blocking;
 use vars qw{%attr %defs %modules $FW_CSRF};
 
 my $version = "0.1.0";
+my $BLOCK_SIZE = 16;
+my $PAD = "\x10";
 
 sub RainbirdLNK_Initialize($)
 {
@@ -133,21 +137,32 @@ sub RainbirdLNK_GetUpdate($)
   return undef;
 }
 
-
-sub RainbirdLNK_decrypt($)
+sub RainbirdLNK_AddPadding($)
 {
-  my ($data) = @_;
-  my $decdata = undef;
-  return $decdata;
+  my ($d) = @_;
+  my $tpl = ($BLOCK_SIZE - length($d)) % $BLOCK_SIZE;
+  my $p = $PAD x $tpl;
+  return $d.$p;
 }
 
-# 381f57478207b32031e5fc776da9215848375d00c52ac5b215257c1b522f9c5b
-
-sub RainbirdLNK_encrypt($)
+sub RainbirdLNK_decrypt($$)
 {
-  my ($data) = @_;
-  my $encdata = unpack("H*",sha256($data));
-  # my $encdata = sha256($data);
+  my ($d,$k) = @_;
+  my $dd = undef;
+  return $dd;
+}
+
+sub RainbirdLNK_encrypt($$)
+{
+  my ($d,$k) = @_;
+  $d = "$d\x00\x10";
+  my $cipher = Crypt::Rijndael->new(RainbirdLNK_AddPadding($k),Crypt::Rijndael::MODE_CBC());
+  # $cipher->set_iv($iv);
+  my $encdata = $cipher->encrypt(RainbirdLNK_AddPadding($d));
+       # - OR -
+  # $plaintext = $cipher->decrypt($encdata);
+  # my $encdata = unpack("H*",sha256($d));
+  # my $encdata = sha256($d);
   return $encdata;
 }
 

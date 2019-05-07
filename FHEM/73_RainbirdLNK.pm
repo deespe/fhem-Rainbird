@@ -37,6 +37,7 @@ sub RainbirdLNK_Initialize($)
   $hash->{AttrList}     = "disable:1,0 ".
                           "disabledForIntervals ".
                           "interval ".
+                          "password ".
                           $readingFnAttributes;
 }
 
@@ -45,10 +46,17 @@ sub RainbirdLNK_Define($$)
   my ($hash,$def) = @_;
   my @args = split " ",$def;
   my ($name,$type,$host,$sec,$int) = @args;
+  eval "use Crypt::Rijndael";
+  if ($@)
+  {
+    my $err = "[RainbirdLNK] $name: Module Crypt::Rijndael needed but not installed.";
+    Log3 $name,1,$err;
+    return $err;
+  }
   my $port = 80;
   return "Usage: define <name> RainbirdLNK <IP> <PASSWORD> [<INTERVAL>]" if ($init_done && (@args < 4 || @args > 5));
   return "\"$host\" is not a valid IPv4 address" if ($host !~ /^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$/);
-  $int = $int && $int >= 60 ? $int : 60;
+  $int = 10 if ($int && $int < 10) ;
   $hash->{DEF}        = $host;
   $hash->{IP}         = $host;
   $hash->{PORT}       = $port;
@@ -60,8 +68,9 @@ sub RainbirdLNK_Define($$)
   {
     $attr{$name}{alias}     = "Rain Bird LNK Wifi";
     $attr{$name}{icon}      = "it_wifi";
+    $attr{$name}{password}  = $sec;
     $attr{$name}{room}      = "Rainbird";
-    $attr{$name}{interval}  = $int;
+    $attr{$name}{interval}  = $int if ($int);
     readingsSingleUpdate($hash,"state","initialized",0);
   }
   return RainbirdLNK_OpenDev($hash);
@@ -157,7 +166,8 @@ sub RainbirdLNK_encrypt($$)
   my ($d,$k) = @_;
   $d = "$d\x00\x10";
   my $cipher = Crypt::Rijndael->new(RainbirdLNK_AddPadding($k),Crypt::Rijndael::MODE_CBC());
-  # $cipher->set_iv($iv);
+  my $iv = rand($BLOCK_SIZE);
+  $cipher->set_iv($iv);
   my $encdata = $cipher->encrypt(RainbirdLNK_AddPadding($d));
        # - OR -
   # $plaintext = $cipher->decrypt($encdata);

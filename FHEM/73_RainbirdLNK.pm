@@ -39,6 +39,7 @@ sub RainbirdLNK_Initialize($)
                           "interval ".
                           "password ".
                           $readingFnAttributes;
+  $hash->{Clients}      = "RainbirdZone";
 }
 
 sub RainbirdLNK_Define($$)
